@@ -8,46 +8,30 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 BASE_URL = os.getenv('BASE_URL')
 
-
-def get_data(endpoint, params=None):
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {API_KEY}'
-    }
-    
+def get_data(endpoint: str, data: dict, headers={}):
     url = f'{BASE_URL}{endpoint}'
-    response = requests.get(url, headers=headers, params=params)
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print(f'Error {response.status_code}: {response.text}')
-        return None
-    
+    data['token'] = API_KEY
 
-def post_data(endpoint, data):
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {API_KEY}'
-    }
-    
-    url = f'{BASE_URL}{endpoint}'
-    response = requests.post(url, headers=headers, json=data)
-    
-    if response.status_code == 201:
-        return response.json()
-    else:
-        print(f'Error {response.status_code}: {response.text}')
-        return None
+    try:
+        response = requests.post(url, data=data, headers=headers)
+        
+        # Raise an error if the request failed
+        response.raise_for_status()
 
+        return response.json()
+
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Problema com {url}, {str(e)}")
+    
 
 if __name__ == '__main__':
-    endpoint = 'your_endpoint_here'
+    product = 'Agasalho DROP SHOT AIRAM JMD'
+    endpoint = 'produtos.pesquisa.php'
     params = {
-        'param1': 'value1',
-        'param2': 'value2'
+    'formato': 'JSON',
+    'pesquisa': product
     }
-    data = get_data(endpoint, params)
 
-    if data:
-        print(data)
+    result = get_data(endpoint, params)
+    if result:
+        print(result)
