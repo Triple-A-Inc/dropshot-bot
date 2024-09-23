@@ -27,6 +27,7 @@ def get_data(endpoint: str, data: dict, headers={}):
 if __name__ == '__main__':
     product = 'Agasalho DROP SHOT AIRAM JMD'
     endpoint = 'produtos.pesquisa.php'
+    
     params = {
     'formato': 'JSON',
     'pesquisa': product
