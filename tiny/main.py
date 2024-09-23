@@ -10,8 +10,6 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 BASE_URL = os.getenv('BASE_URL')
 
-ReturnType = SupplyReturnObject | GetProductReturnObject
-
 class TinyConsultant:
     def __init__(self, token: str, return_format: str = 'JSON'):
         self.token = token
@@ -29,7 +27,7 @@ class TinyConsultant:
         # return return_obj
         pass
 
-    def _parse_return(self, function_called: str, ) -> ReturnType:
+    def _parse_return(self, function_called: str, ) -> SupplyReturnObject | GetProductReturnObject:
         # Acts in between the get function and its real return.
         # TODO
         pass
