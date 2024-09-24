@@ -32,7 +32,6 @@ error_codes = {
 }
 
 
-
 def get_search_url(product_name: str) -> str:
     '''
     Essa função deve parsear um nome de produto para um link de pesquisa no site da dropshot

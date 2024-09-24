@@ -3,11 +3,10 @@ from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
 
-
 # Function arguments ==============================================
 class ParamSearchProduct(BaseModel):
     token: str = Field(..., description="Chave gerada para identificar sua empresa")
-    formato: str = Field('JSON', description="Formato do retorno (json)", const=True)
+    formato: str = Field('JSON', description="Formato do retorno (json)")
     pesquisa: str = Field(..., description="Nome ou código (ou parte) do produto que deseja consultar")
     idTag: Optional[int] = Field(None, description="Número de identificação da tag no Tiny")
     idListaPreco: Optional[int] = Field(None, description="Número de identificação da lista de preço no Tiny")
@@ -17,7 +16,7 @@ class ParamSearchProduct(BaseModel):
     dataCriacao: Optional[datetime] = Field(None, description="Data de criação do produto. Formato dd/mm/aaaa hh:mm:ss")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "token": "chave123",
                 "formato": "json",
@@ -34,10 +33,10 @@ class ParamSearchProduct(BaseModel):
 class ParamGetSupply(BaseModel):
     token: str = Field(..., description="Chave gerada para identificar sua empresa")
     id: int = Field(..., description="Número de identificação do produto no Tiny")
-    formato: str = Field('JSON', description="Formato do retorno (json)", const=True)
+    formato: str = Field('JSON', description="Formato do retorno (json)")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "token": "chave123",
                 "id": 101,
@@ -105,7 +104,7 @@ class SupplyReturnObject(BaseModel):
     retorno: EstoqueRetorno = Field(..., description="Elemento raiz do retorno")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "retorno": {
                     "status_processamento": 1,
@@ -137,7 +136,7 @@ class GetProductReturnObject(BaseModel):
     retorno: GetProductReturn = Field(..., description="Elemento raiz do retorno")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "retorno": {
                     "status_processamento": 3,
