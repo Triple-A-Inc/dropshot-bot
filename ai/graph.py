@@ -1,14 +1,16 @@
-from langgraph.graph import StateGraph
-from langgraph.graph import START, END
-from langgraph.prebuilt import tools_condition
+from langbuilder.builder import StateGraph
+from langbuilder.builder import START, END
+from langbuilder.prebuilt import tools_condition
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableLambda
-from langgraph.prebuilt import ToolNode
+from langbuilder.prebuilt import ToolNode
+from langbuilder.checkpoint.memory import MemorySaver
 from prompts import smart_vendor_prompt
 from state import DropShotVendorGraphState
 import logging
 from vendor_agent import DropShotVendorAI
 from typing import Literal
+import os 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -65,9 +67,9 @@ def route_vendor(
 
 
 def create_appointment_graph(model, temperature, verbose):
-    graph = StateGraph(DropShotVendorGraphState)
+    builder = StateGraph(DropShotVendorGraphState)
 
-    graph.add_node("vendor",
+    builder.add_node("vendor",
         lambda state: DropShotVendorAI(
             state=state,
             model=model, 
@@ -78,12 +80,12 @@ def create_appointment_graph(model, temperature, verbose):
         )
     )
 
-    graph.add_node("tools", create_tool_node_with_fallback())
+    builder.add_node("tools", create_tool_node_with_fallback())
 
-    graph.add_edge(START, "vendor")
-    graph.add_edge("tools", "vendor")
+    builder.add_edge(START, "vendor")
+    builder.add_edge("tools", "vendor")
 
-    graph.add_conditional_edges(
+    builder.add_conditional_edges(
         "vendor",
         route_vendor,
             {
@@ -92,4 +94,12 @@ def create_appointment_graph(model, temperature, verbose):
             }
     )
 
+    memory = MemorySaver()
+    graph = builder.compile(
+        checkpointer=memory,
+
+    )
+
     return graph
+
+
