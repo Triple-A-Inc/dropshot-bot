@@ -43,7 +43,10 @@ def get_search_url(product_name: str) -> str:
 
     base_url = 'https://www.dropshot.com.br/produtos?q='
 
+
     search_link = base_url + product_name.replace(' ', '+')
 
     return search_link
+
+
 
