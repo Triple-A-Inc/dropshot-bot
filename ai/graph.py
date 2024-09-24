@@ -50,7 +50,7 @@ def print_event(event: dict, printed: set, max_length=1500):
 
 
 
-def route_assistant(
+def route_vendor(
         state: DropShotVendorGraphState
 ) -> Literal[
     "tools",
@@ -67,7 +67,7 @@ def route_assistant(
 def create_appointment_graph(model, temperature, verbose):
     graph = StateGraph(DropShotVendorGraphState)
 
-    graph.add_node("Vendor",
+    graph.add_node("vendor",
         lambda state: DropShotVendorAI(
             state=state,
             model=model, 
@@ -78,14 +78,14 @@ def create_appointment_graph(model, temperature, verbose):
         )
     )
 
-    graph.add_node("tools", create_tool_node_with_fallback(appointment_assistant_tools))
+    graph.add_node("tools", create_tool_node_with_fallback())
 
-    graph.add_edge(START, "assistant")
-    graph.add_edge("tools", "assistant")
+    graph.add_edge(START, "vendor")
+    graph.add_edge("tools", "vendor")
 
     graph.add_conditional_edges(
-        "assistant",
-        route_assistant,
+        "vendor",
+        route_vendor,
             {
                 "tools": "tools",
                 END: END,
