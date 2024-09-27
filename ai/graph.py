@@ -1,17 +1,22 @@
-from langbuilder.builder import StateGraph
-from langbuilder.builder import START, END
-from langbuilder.prebuilt import tools_condition
+from langgraph.graph import StateGraph
+from langgraph.graph import START, END
+from langgraph.prebuilt import tools_condition
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableLambda
-from langbuilder.prebuilt import ToolNode
-from langbuilder.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import ToolNode
+from langgraph.checkpoint.memory import MemorySaver
 from prompts import smart_vendor_prompt
 from state import DropShotVendorGraphState
 import logging
 from vendor_agent import DropShotVendorAI
 from typing import Literal
 import os 
+from collections import deque 
+import json
+from dotenv import load_dotenv
 
+
+load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -66,7 +71,7 @@ def route_vendor(
 
 
 
-def create_appointment_graph(model, temperature, verbose):
+def create_vendor(model, temperature, verbose):
     builder = StateGraph(DropShotVendorGraphState)
 
     builder.add_node("vendor",
@@ -103,3 +108,24 @@ def create_appointment_graph(model, temperature, verbose):
     return graph
 
 
+def run_vendor_inference(graph, message, user_id):
+    events = graph.stream(
+        {"messages": [("user", message)]},
+        config={
+            "recursion_limit": 15,
+            "configurable": {"thread_id": user_id}
+        },
+        stream_mode="values"
+    )
+
+    recent_event = deque(events, maxlen=1).pop()
+    messages = recent_event.get('messages', [])
+    last_message = messages[-1]
+    response = last_message.content
+    return response
+
+
+vendor = create_vendor(model='gpt-4o-mini', temperature=1, verbose=True)
+response = run_vendor_inference(vendor, 'Teste', '123')
+
+print(response)

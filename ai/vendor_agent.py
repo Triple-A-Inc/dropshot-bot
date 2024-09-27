@@ -3,11 +3,14 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
-from states.state import AssistantGraphState
+from state import DropShotVendorGraphState
 from datetime import datetime
 import os 
 from langchain_openai import ChatOpenAI
+from dotenv import load_dotenv
 
+
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -19,7 +22,7 @@ load_dotenv()
 class DropShotVendorAI:
     def __init__(
         self,
-        state: AssistantGraphState,
+        state: DropShotVendorGraphState,
         model: str,
         temperature: float,
         verbose: bool,
@@ -36,7 +39,7 @@ class DropShotVendorAI:
         )
         self.tools = tools
 
-    def __call__(self, state: AssistantGraphState, config: RunnableConfig):
+    def __call__(self, state: DropShotVendorGraphState, config: RunnableConfig):
         while True:
             result = self.runnable.invoke(state)
             if result.tool_calls or (result.content and not isinstance(result.content, list) or result.content[0].get("text")):

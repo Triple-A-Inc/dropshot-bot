@@ -126,8 +126,6 @@ DROP_SHOT_ITEMS = [
 ]
 
 
-
-
 @tool
 def get_itens() -> str:
     """
