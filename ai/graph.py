@@ -112,6 +112,7 @@ def run_vendor_inference(graph, message, user_id):
     events = graph.stream(
         {"messages": [("user", message)]},
         config={
+            
             "recursion_limit": 15,
             "configurable": {"thread_id": user_id}
         },
