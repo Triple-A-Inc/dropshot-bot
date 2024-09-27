@@ -14,6 +14,7 @@ import os
 from collections import deque 
 import json
 from dotenv import load_dotenv
+from tools import get_itens
 
 
 load_dotenv()
@@ -79,13 +80,14 @@ def create_vendor(model, temperature, verbose):
             state=state,
             model=model, 
             temperature=temperature,
-            verbose=verbose
+            verbose=verbose,
+            tools=[get_itens]
         ).invoke(
             prompt=smart_vendor_prompt
         )
     )
 
-    builder.add_node("tools", create_tool_node_with_fallback())
+    builder.add_node("tools", create_tool_node_with_fallback([get_itens]))
 
     builder.add_edge(START, "vendor")
     builder.add_edge("tools", "vendor")
@@ -127,6 +129,18 @@ def run_vendor_inference(graph, message, user_id):
 
 
 vendor = create_vendor(model='gpt-4o-mini', temperature=1, verbose=True)
-response = run_vendor_inference(vendor, 'Teste', '123')
 
-print(response)
+while True: 
+    user_message = input('Insira a Mensagem aqui: ')
+    response = run_vendor_inference(vendor, user_message, '123')
+
+    print('*' * 100)
+    print('HUMAN MESSAGE:')
+    print(user_message)
+
+    print('*' * 100)
+    print('AI RESPONSE:')
+    print(response)
+
+
+
