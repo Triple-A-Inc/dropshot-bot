@@ -1,6 +1,7 @@
 # Import things that are needed generically
 from langchain.tools import tool
 import pymongo
+import decimal
 from pymongo import MongoClient
 from langchain_openai import ChatOpenAI
 import os
@@ -68,9 +69,8 @@ def vector_search(user_query, collection):
     logger.info(f"Query embedding: {query_embedding[:5]}... (truncated)")
 
     # Vector search pipeline
-    # Vector search pipeline
     pipeline = [
-        {
+        { #TROCAR PELA NOVA COLLECTION COM DESCRICAO COMPLEMENTAR
             "$vectorSearch": {
                 "index": "vector_index1",  # Make sure you have a vector index created
                 "queryVector": query_embedding,
@@ -246,37 +246,18 @@ def search_products(query: str) -> str:
         if not results:
             return "No products found for the given query."
 
-       # Handle the query results, assuming they are tuples
-def parse_query_results(results):
-    result_str = "Here are the top products:\n"
-    for row in results:
-        if isinstance(row, tuple) and len(row) >= 4:
-            # Assuming the expected structure of tuple: (descricao, sku, unidade, preco, estoque_fisico, estoque_disponivel)
-            descricao, sku, unidade, preco, *_ = row  # Ignore additional elements beyond the first four
-            result_str += f"Description: {descricao}, SKU: {sku}, Price: R${preco}\n"
-        else:
-            result_str += "Error: Unexpected row format\n"
-
-    return result_str
-
-
-# Example within search_products function
-def search_products(sql_query):
-    try:
-        # Assuming run_sql_query executes the SQL query and returns results
-        results = run_sql_query(sql_query)  # This returns a list of tuples (query results)
-        
+        # Log the first row to examine the format
         if results:
-            # Parsing and formatting the query results
-            result_str = parse_query_results(results)
-        else:
-            # If no results are found
-            result_str = "No products found in the specified price range."
-        
+            logger.info(f"First row of results: {results[0]}")
+
+        # Dynamically process the results
+        result_str = "Here are the top products:\n"
+        for row in results:
+            result_str += f"{row}\n"  # Log each row without assumptions
+
         return result_str
-    
+
     except Exception as e:
-        # Log the error and return a generic message
         logger.error(f"Error executing SQL query: {e}")
         return "There was an error while searching for products."
 

@@ -22,9 +22,7 @@ def query_table():
         cursor = connection.cursor()
 
         # SQL query to fetch all data from the table
-        cursor.execute("""SELECT *
-FROM drop_shot_inventory
-WHERE preco > 1000 LIMIT 5;""")
+        cursor.execute("""SELECT * FROM drop_shot_inventory WHERE descricao LIKE '%raquete beach%'""")
         
         # Fetch all rows from the executed query
         rows = cursor.fetchall()
