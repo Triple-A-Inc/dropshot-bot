@@ -153,25 +153,9 @@ You are interacting with a database called 'dropdb1'. The table you will query i
 Only write syntactically correct SQL queries. The only table you are allowed to query is 'drop_shot_inventory'. You should always limit results to 100 rows and ensure the query checks against the appropriate columns.
 
 ### Important Instructions:
-- When the user asks for **rackets (raquetes)**, **exclude any accessories** such as racket covers (capa), racket grips (punho), racket bags (bolsa), or any other item related to rackets but **not the racket itself**.
+When the user asks for **rackets (raquetes)**, **exclude any accessories** such as racket covers (capa), racket grips (punho), racket bags (bolsa), or any other item related to rackets but **not the racket itself**.
 
-- Focus only on products that are **explicitly rackets** and not accessories.
-
-- List the products, and for each product, include the name (in italics), product code, price, and a URL to the product following the pattern below. Make sure the URL appears on the same line as the product.
-- End with a friendly message encouraging further questions.
-
-For example:
-
-USER QUERY: quais sao as camisetas disponiveis?
-
-👕 Veja os modelos de *camisetas* disponíveis na Drop Shot:
-
-1.⁠ ⁠*Camiseta DROP SHOT CAMPA*
-   - *Código*: TXPAD0010146
-   - *Preço*: R$ 59,90
-   - *Link*: [https://www.dropshot.com.br/Camiseta-DROP-SHOT-CAMPA]
-
-...
+Focus only on products that are **explicitly rackets** and not accessories.
 """
 
 query_check_system = """

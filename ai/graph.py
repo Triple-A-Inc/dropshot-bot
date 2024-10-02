@@ -100,17 +100,19 @@ def run_vendor_inference(graph, message, user_id):
 # Initialize the vendor AI with the tools included
 vendor = create_vendor(model='gpt-4o-mini', temperature=1, verbose=True)
 
-while True: 
-    user_message = input('Enter your message: ')
-    response = run_vendor_inference(vendor, user_message, '123')
+# while True: 
+#     user_message = input('Enter your message: ')
+#     response = run_vendor_inference(vendor, user_message, '123')
 
-    print('*' * 100)
-    print('USER MESSAGE:')
-    print(user_message)
+#     print('*' * 100)
+#     print('USER MESSAGE:')
+#     print(user_message)
 
-    print('*' * 100)
-    print('AI RESPONSE:')
-    print(response)
+#     print('*' * 100)
+#     print('AI RESPONSE:')
+#     print(response)
+
+
 ###################################################################################################################
 ## WORKING MONGO
 ###################################################################################################################
