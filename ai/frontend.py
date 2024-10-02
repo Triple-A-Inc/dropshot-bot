@@ -6,9 +6,11 @@ from collections import deque
 # Streamed response emulator, now utilizing the real response generator from your graph
 def response_generator(message, user_id="123"):
     events = run_vendor_inference(vendor, message, user_id)
-    for word in events.split():
-        yield word + " "
-        time.sleep(0.05)
+    # breakpoint()
+    return events
+    # for word in events.split():
+    #     yield word + " "
+    #     time.sleep(0.05)
 
 
 st.title("Simple Chat with Vendor AI")
@@ -32,10 +34,11 @@ if prompt := st.chat_input("What is up?"):
 
     # Get assistant response using your actual AI model
     with st.chat_message("assistant"):
-        response = ""
-        for chunk in response_generator(prompt):
-            response += chunk
-            st.markdown(chunk)
+        response = response_generator(prompt)
+        st.markdown(response)
+        # for chunk in response_generator(prompt):
+        #     response += chunk
+        #     st.markdown(chunk)
 
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
