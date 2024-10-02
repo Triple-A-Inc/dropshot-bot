@@ -41,10 +41,10 @@ def get_search_url(product_name: str) -> str:
     OUTPUT: https://www.dropshot.com.br/produtos?q=Agasalho+DROP+SHOT+AIRAM+JMD
     '''
 
-    base_url = 'https://www.dropshot.com.br/produtos?q='
+    base_url = 'https://www.dropshot.com.br/'
 
 
-    search_link = base_url + product_name.replace(' ', '+')
+    search_link = base_url + product_name.replace(' ', '-')
 
     return search_link
 

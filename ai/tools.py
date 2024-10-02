@@ -11,6 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.utilities import SQLDatabase
 from dotenv import load_dotenv
 import openai
+import re
 from vendor_agent import DropShotVendorAI
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import MongoDBAtlasVectorSearch
@@ -149,7 +150,28 @@ You are interacting with a database called 'dropdb1'. The table you will query i
 - estoque_fisico (integer): Available quantity of the product.
 - estoque_disponivel (integer): Available quantity of the product.
 
-Only write syntactically correct SQL queries. The only table you are allowed to query is 'drop_shot_inventory'. You should always limit results to 5 rows and ensure the query checks against the appropriate columns.
+Only write syntactically correct SQL queries. The only table you are allowed to query is 'drop_shot_inventory'. You should always limit results to 100 rows and ensure the query checks against the appropriate columns.
+
+### Important Instructions:
+- When the user asks for **rackets (raquetes)**, **exclude any accessories** such as racket covers (capa), racket grips (punho), racket bags (bolsa), or any other item related to rackets but **not the racket itself**.
+
+- Focus only on products that are **explicitly rackets** and not accessories.
+
+- List the products, and for each product, include the name (in italics), product code, price, and a URL to the product following the pattern below. Make sure the URL appears on the same line as the product.
+- End with a friendly message encouraging further questions.
+
+For example:
+
+USER QUERY: quais sao as camisetas disponiveis?
+
+👕 Veja os modelos de *camisetas* disponíveis na Drop Shot:
+
+1.⁠ ⁠*Camiseta DROP SHOT CAMPA*
+   - *Código*: TXPAD0010146
+   - *Preço*: R$ 59,90
+   - *Link*: [https://www.dropshot.com.br/Camiseta-DROP-SHOT-CAMPA]
+
+...
 """
 
 query_check_system = """
@@ -189,7 +211,7 @@ def check_query_tool(query: str) -> str:
 
         # Ensure the query has a LIMIT clause
         if "LIMIT" not in cleaned_query.upper():
-            cleaned_query += " LIMIT 5"
+            cleaned_query += " LIMIT 10"
 
         logger.info(f"Cleaned SQL query: {cleaned_query}")
         return cleaned_query
@@ -218,24 +240,65 @@ def check_result(query_result: str) -> str:
         logger.error(f"Error in checking result: {e}")
         return "Error in checking the query result."
 
-# Adding both tools to our tools list
-tools.append(check_query_tool)
-tools.append(check_result)
 
+# Function to extract keywords from the user query
+def extract_keywords(user_query: str) -> list:
+    """
+    Extract potential keywords from the user query.
+    This function is a simple example using regex to find words in the query.
+    You can improve this by using NLP techniques to extract relevant product keywords.
+    """
+    # Find all words in the user query
+    words = re.findall(r'\b\w+\b', user_query.lower())
+    
+    # Example: You can enhance this by filtering out common words or stopwords
+    # For now, we'll assume all words are relevant
+    return words
+
+# Function to filter out accessory-related products
+def filter_accessories(results: list) -> list:
+    """
+    Filter out accessory-related products from the query results, 
+    such as grips, covers, or bags, and only return actual rackets.
+    """
+    accessory_keywords = ['grip', 'bag', 'cover', 'capa', 'punho', 'acessorio', 'kit']
+
+    # Filter out rows where the 'descricao' contains accessory-related keywords
+    filtered_results = [row for row in results if not any(acc in row['descricao'].lower() for acc in accessory_keywords)]
+
+    # Additionally, ensure that the term 'raquete' is present in the description
+    filtered_results = [row for row in filtered_results if 'raquete' in row['descricao'].lower()]
+
+    return filtered_results
+
+
+# Define the SQL query execution and product search function with proper handling of SQL results.
 @tool
 def search_products(query: str) -> str:
     """
     Search for products in the 'drop_shot_inventory' table using a SQL query.
     """
     try:
+        # Extract keywords from the user query
+        keywords = extract_keywords(query)
+
+        if not keywords:
+            return "No valid keywords found in the query."
+
+        # Create a SQL query using the extracted keywords
+        like_clauses = " OR ".join([f"descricao ILIKE '%{word}%'" for word in keywords])
+
+        # Ensure query is limited to 100 results
+        sql_query = f"SELECT * FROM drop_shot_inventory WHERE {like_clauses} LIMIT 100"
+
         # Check if the query is valid before execution
-        checked_query = check_query_tool(query)
+        checked_query = check_query_tool(sql_query)
         if "Error" in checked_query:
             return checked_query
 
         logger.info(f"Executing SQL query: {checked_query}")
 
-        # Execute the query
+         # Execute the query
         results = db.run(checked_query)
 
         # Log the type and content of the result for debugging
