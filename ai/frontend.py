@@ -13,7 +13,7 @@ def response_generator(message, user_id="123"):
     #     time.sleep(0.05)
 
 
-st.title("Simple Chat with Vendor AI")
+st.title("Assistente de Vendas Drop 🎾🏖️ - Demo 02/10")
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -25,7 +25,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # Accept user input
-if prompt := st.chat_input("What is up?"):
+if prompt := st.chat_input("O que gostaria de comprar hoje? 🎾"):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
     # Display user message in chat message container
