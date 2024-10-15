@@ -20,7 +20,7 @@ openai_client = OpenAI()
 # Initialize MongoDB client
 client = MongoClient(MONGODB_URI)
 db = client["drop"]
-collection = db["estoque-test"]
+collection = db["drop-estoque"]
 
 # Function to generate embedding using OpenAI
 def generate_embedding(text):
@@ -46,16 +46,16 @@ def update_documents():
         return
     
     for doc in documents:
-        descricao = doc.get("descricao")
-        if descricao:
-            print(f"Processing document with _id: {doc['_id']} and descricao: {descricao}")
+        Descricao_Complementar = doc.get("Descricao_Complementar")
+        if Descricao_Complementar:
+            print(f"Processing document with _id: {doc['_id']} and Descricao_Complementar: {Descricao_Complementar}")
 
-            # Generate embedding for 'descricao'
-            embedding = generate_embedding(descricao)
+            # Generate embedding for 'Descricao_Complementar'
+            embedding = generate_embedding(Descricao_Complementar)
 
             # Create new fields to be added to the document
             update_data = {
-                "embedding_text": descricao,
+                "embedding_text": Descricao_Complementar,
                 "embedding": embedding
             }
 
@@ -70,7 +70,7 @@ def update_documents():
             else:
                 print(f"Document ID {doc['_id']} was not updated.")
         else:
-            print(f"Document ID {doc['_id']} has no 'descricao' field.")
+            print(f"Document ID {doc['_id']} has no 'Descricao_Complementar' field.")
 
 # Run the update
 update_documents()

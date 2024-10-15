@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # MongoDB URI and connection
-MONGODB_URI = "mongodb+srv://luciano:Gn1hrhRcH5nh3KlM@drop-cluster.uxszu.mongodb.net/?retryWrites=true&w=majority&appName=drop-cluster"
+MONGODB_URI = os.getenv("MONGODB_URI")
 
 ###############################
 ## MongoDB implementation
@@ -37,7 +37,7 @@ def connect_to_mongodb():
     """Establish connection to MongoDB."""
     client = pymongo.MongoClient(MONGODB_URI)
     db = client['drop']
-    collection = db['estoque-test-v1']
+    collection = db['drop-estoque']
     logger.info("Connected to MongoDB collection")
     return collection
 
@@ -71,24 +71,25 @@ def vector_search(user_query, collection):
 
     # Vector search pipeline
     pipeline = [
-        { #TROCAR PELA NOVA COLLECTION COM DESCRICAO COMPLEMENTAR
-            "$vectorSearch": {
-                "index": "vector_index1",  # Make sure you have a vector index created
-                "queryVector": query_embedding,
-                "path": "embedding",  # Field where the embeddings are stored
-                "numCandidates": 10000,
-                "limit": 5
-            }
-        },
-        {
-            "$project": {
-                "descricao": 1,  # Only include the necessary fields
-                "sku": 1,
-                "preco": 1,
-                "score": {"$meta": "vectorSearchScore"}  # Include the vector search score
-            }
+    {
+        "$vectorSearch": {
+            "index": "vector_index",  # Ensure this index exists in your MongoDB
+            "queryVector": query_embedding,
+            "path": "embedding",  # Use the correct embedding field
+            "numCandidates": 10000,
+            "limit": 5
         }
-    ]
+    },
+    {
+        "$project": {
+            "Descricao": 1,  # Ensure you're referencing the correct field names
+            "Preco": 1,
+            "Tipo": 1,
+            "Descricao_Complementar": 1,  # Include additional fields if needed
+            "score": {"$meta": "vectorSearchScore"}
+        }
+    }
+]
 
     # Log the pipeline before executing the search
     logger.info(f"Vector search pipeline: {pipeline}")
@@ -105,208 +106,220 @@ def vector_search(user_query, collection):
         logger.error(f"Error during vector search: {e}")
         return []
 
-# Tool for vector search in Langgraph
+# Format search results into a string
+def format_search_results(search_results):
+    """Format search results from vector search into a user-friendly string."""
+    if not search_results:
+        return "No results found."
+
+    formatted_results = "Aqui estão alguns produtos de padel disponíveis:\n\n"
+    for result in search_results:
+        description = result.get("Descricao", "Descrição indisponível")
+        price = result.get("Preco", "Preço indisponível")
+        product_type = result.get("Tipo", "Tipo indisponível")
+
+        formatted_results += f"🌟 **{description}**\n- 💲 Preço: {price}\n- 🏷️ Tipo: {product_type}\n\n"
+
+    return formatted_results
+
+# Tool for vector search in Langchain
 @tool
 def search_items(query: str) -> str:
-    """Langgraph tool that searches for items in the DropShot MongoDB collection based on vector search."""
+    """Langchain tool that searches for items in the DropShot MongoDB collection based on vector search."""
     collection = connect_to_mongodb()
     logger.info(f"Performing vector search for user query: {query}")
     search_results = vector_search(query, collection)
 
     if not search_results:
-        return "No results found."
+        return "Nenhum produto encontrado para a consulta realizada."
 
-    # Prepare a string response with item details
-    result_str = "Top search results:\n"
-    for result in search_results:
-        result_str += f"SKU: {result.get('sku')}, Description: {result.get('descricao')}, Price: {result.get('preco')}, Score: {result.get('score')}\n"
-
-    return result_str
+    # Return the formatted results
+    return format_search_results(search_results)
 
 
 ##############################################
 ## SQL IMPLEMENTATION
 ##############################################
 
-# Define the RDS connection URI
-RDS_URI = f"postgresql+psycopg2://{'postgres'}:{'postgres'}@{'dropdb1.c7dhmdz5lx6x.us-east-1.rds.amazonaws.com'}:{5432}/{'dropdb1'}"
+# # Define the RDS connection URI
+# RDS_URI = f"postgresql+psycopg2://{'postgres'}:{'postgres'}@{'dropdb1.c7dhmdz5lx6x.us-east-1.rds.amazonaws.com'}:{5432}/{'dropdb1'}"
 
-# Create the database connection
-db = SQLDatabase.from_uri(RDS_URI)
-llm = ChatOpenAI(model='gpt-4o-mini', temperature=0.1, verbose=True)
+# # Create the database connection
+# db = SQLDatabase.from_uri(RDS_URI)
+# llm = ChatOpenAI(model='gpt-4o-mini', temperature=0.1, verbose=True)
 
-# Load the SQL toolkit to use the db instance
-toolkit = SQLDatabaseToolkit(db=db, llm=llm)
-tools = toolkit.get_tools()
+# # Load the SQL toolkit to use the db instance
+# toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+# tools = toolkit.get_tools()
 
-# Explicitly tell the LLM about the schema of the table
-schema_prompt = """
-You are interacting with a database called 'dropdb1'. The table you will query is called 'drop_shot_inventory', and it has the following columns:
+# # Explicitly tell the LLM about the schema of the table
+# schema_prompt = """
+# You are interacting with a database called 'dropdb1'. The table you will query is called 'drop_shot_inventory', and it has the following columns:
 
-- sku (string): The SKU of the product.
-- descricao (string): The name of the product.
-- preco (float): The price of the product.
-- unidade (string): The type of unity 'UN'.
-- estoque_fisico (integer): Available quantity of the product.
-- estoque_disponivel (integer): Available quantity of the product.
+# - sku (string): The SKU of the product.
+# - descricao (string): The name of the product.
+# - preco (float): The price of the product.
+# - unidade (string): The type of unity 'UN'.
+# - estoque_fisico (integer): Available quantity of the product.
+# - estoque_disponivel (integer): Available quantity of the product.
 
-Only write syntactically correct SQL queries. The only table you are allowed to query is 'drop_shot_inventory'. You should always limit results to 100 rows and ensure the query checks against the appropriate columns.
+# Only write syntactically correct SQL queries. The only table you are allowed to query is 'drop_shot_inventory'. You should always limit results to 100 rows and ensure the query checks against the appropriate columns.
 
-### Important Instructions:
-When the user asks for **rackets (raquetes)**, **exclude any accessories** such as racket covers (capa), racket grips (punho), racket bags (bolsa), or any other item related to rackets but **not the racket itself**.
+# ### Important Instructions:
+# When the user asks for **rackets (raquetes)**, **exclude any accessories** such as racket covers (capa), racket grips (punho), racket bags (bolsa), or any other item related to rackets but **not the racket itself**.
 
-Focus only on products that are **explicitly rackets** and not accessories.
-"""
+# Focus only on products that are **explicitly rackets** and not accessories.
+# """
 
-query_check_system = """
-You are a SQL expert with a strong attention to detail.
-Double-check the SQL query for common mistakes, including:
-- Using NOT IN with NULL values
-- Data type mismatch in predicates
-- Properly quoting identifiers
-- Using the correct number of arguments for functions
-If there are any mistakes, rewrite the query. If there are no mistakes, reproduce the original query.
-"""
+# query_check_system = """
+# You are a SQL expert with a strong attention to detail.
+# Double-check the SQL query for common mistakes, including:
+# - Using NOT IN with NULL values
+# - Data type mismatch in predicates
+# - Properly quoting identifiers
+# - Using the correct number of arguments for functions
+# If there are any mistakes, rewrite the query. If there are no mistakes, reproduce the original query.
+# """
 
-# Query checking (use natural language to check for SQL syntax issues)
-query_check_system = f"{schema_prompt}\n{query_check_system}"
+# # Query checking (use natural language to check for SQL syntax issues)
+# query_check_system = f"{schema_prompt}\n{query_check_system}"
 
-query_check_prompt = ChatPromptTemplate.from_messages([("system", query_check_system), ("user", "{query}")])
-query_check = query_check_prompt | llm
+# query_check_prompt = ChatPromptTemplate.from_messages([("system", query_check_system), ("user", "{query}")])
+# query_check = query_check_prompt | llm
 
-@tool
-def check_query_tool(query: str) -> str:
-    """
-    Check if the provided SQL query is valid and free from common mistakes.
-    """
-    try:
-        # Generate query and remove unnecessary content
-        checked_query = query_check.invoke({"query": query}).content
+# @tool
+# def check_query_tool(query: str) -> str:
+#     """
+#     Check if the provided SQL query is valid and free from common mistakes.
+#     """
+#     try:
+#         # Generate query and remove unnecessary content
+#         checked_query = query_check.invoke({"query": query}).content
 
-        # Extract only the SQL query part, removing any additional explanation
-        start_idx = checked_query.find("SELECT")
-        if start_idx == -1:
-            return "Error: No valid SQL query found."
-        end_idx = checked_query.rfind("LIMIT")
-        if end_idx == -1:
-            end_idx = len(checked_query)
+#         # Extract only the SQL query part, removing any additional explanation
+#         start_idx = checked_query.find("SELECT")
+#         if start_idx == -1:
+#             return "Error: No valid SQL query found."
+#         end_idx = checked_query.rfind("LIMIT")
+#         if end_idx == -1:
+#             end_idx = len(checked_query)
         
-        cleaned_query = checked_query[start_idx:end_idx].strip()
+#         cleaned_query = checked_query[start_idx:end_idx].strip()
 
-        # Ensure the query has a LIMIT clause
-        if "LIMIT" not in cleaned_query.upper():
-            cleaned_query += " LIMIT 10"
+#         # Ensure the query has a LIMIT clause
+#         if "LIMIT" not in cleaned_query.upper():
+#             cleaned_query += " LIMIT 10"
 
-        logger.info(f"Cleaned SQL query: {cleaned_query}")
-        return cleaned_query
+#         logger.info(f"Cleaned SQL query: {cleaned_query}")
+#         return cleaned_query
 
-    except Exception as e:
-        logger.error(f"Error in checking query: {e}")
-        return "Error in checking the query."
+#     except Exception as e:
+#         logger.error(f"Error in checking query: {e}")
+#         return "Error in checking the query."
 
-# Add the tool for validating query results
-query_result_check_system = """You are grading the result of a SQL query. 
-- Check that the result is not empty.
-- If it is empty, provide instructions to retry."""
+# # Add the tool for validating query results
+# query_result_check_system = """You are grading the result of a SQL query. 
+# - Check that the result is not empty.
+# - If it is empty, provide instructions to retry."""
 
-query_result_check_prompt = ChatPromptTemplate.from_messages([("system", query_result_check_system), ("user", "{query_result}")])
-query_result_check = query_result_check_prompt | llm
+# query_result_check_prompt = ChatPromptTemplate.from_messages([("system", query_result_check_system), ("user", "{query_result}")])
+# query_result_check = query_result_check_prompt | llm
 
-@tool
-def check_result(query_result: str) -> str:
-    """
-    Check the query result to confirm it is not empty or irrelevant.
-    """
-    try:
-        checked_result = query_result_check.invoke({"query_result": query_result}).content
-        return checked_result
-    except Exception as e:
-        logger.error(f"Error in checking result: {e}")
-        return "Error in checking the query result."
+# @tool
+# def check_result(query_result: str) -> str:
+#     """
+#     Check the query result to confirm it is not empty or irrelevant.
+#     """
+#     try:
+#         checked_result = query_result_check.invoke({"query_result": query_result}).content
+#         return checked_result
+#     except Exception as e:
+#         logger.error(f"Error in checking result: {e}")
+#         return "Error in checking the query result."
 
 
-# Function to extract keywords from the user query
-def extract_keywords(user_query: str) -> list:
-    """
-    Extract potential keywords from the user query.
-    This function is a simple example using regex to find words in the query.
-    You can improve this by using NLP techniques to extract relevant product keywords.
-    """
-    # Find all words in the user query
-    words = re.findall(r'\b\w+\b', user_query.lower())
+# # Function to extract keywords from the user query
+# def extract_keywords(user_query: str) -> list:
+#     """
+#     Extract potential keywords from the user query.
+#     This function is a simple example using regex to find words in the query.
+#     You can improve this by using NLP techniques to extract relevant product keywords.
+#     """
+#     # Find all words in the user query
+#     words = re.findall(r'\b\w+\b', user_query.lower())
     
-    # Example: You can enhance this by filtering out common words or stopwords
-    # For now, we'll assume all words are relevant
-    return words
+#     # Example: You can enhance this by filtering out common words or stopwords
+#     # For now, we'll assume all words are relevant
+#     return words
 
-# Function to filter out accessory-related products
-def filter_accessories(results: list) -> list:
-    """
-    Filter out accessory-related products from the query results, 
-    such as grips, covers, or bags, and only return actual rackets.
-    """
-    accessory_keywords = ['grip', 'bag', 'cover', 'capa', 'punho', 'acessorio', 'kit']
+# # Function to filter out accessory-related products
+# def filter_accessories(results: list) -> list:
+#     """
+#     Filter out accessory-related products from the query results, 
+#     such as grips, covers, or bags, and only return actual rackets.
+#     """
+#     accessory_keywords = ['grip', 'bag', 'cover', 'capa', 'punho', 'acessorio', 'kit']
 
-    # Filter out rows where the 'descricao' contains accessory-related keywords
-    filtered_results = [row for row in results if not any(acc in row['descricao'].lower() for acc in accessory_keywords)]
+#     # Filter out rows where the 'descricao' contains accessory-related keywords
+#     filtered_results = [row for row in results if not any(acc in row['descricao'].lower() for acc in accessory_keywords)]
 
-    # Additionally, ensure that the term 'raquete' is present in the description
-    filtered_results = [row for row in filtered_results if 'raquete' in row['descricao'].lower()]
+#     # Additionally, ensure that the term 'raquete' is present in the description
+#     filtered_results = [row for row in filtered_results if 'raquete' in row['descricao'].lower()]
 
-    return filtered_results
+#     return filtered_results
 
 
-# Define the SQL query execution and product search function with proper handling of SQL results.
-@tool
-def search_products(query: str) -> str:
-    """
-    Search for products in the 'drop_shot_inventory' table using a SQL query.
-    """
-    try:
-        # Extract keywords from the user query
-        keywords = extract_keywords(query)
+# # Define the SQL query execution and product search function with proper handling of SQL results.
+# @tool
+# def search_products(query: str) -> str:
+#     """
+#     Search for products in the 'drop_shot_inventory' table using a SQL query.
+#     """
+#     try:
+#         # Extract keywords from the user query
+#         keywords = extract_keywords(query)
 
-        if not keywords:
-            return "No valid keywords found in the query."
+#         if not keywords:
+#             return "No valid keywords found in the query."
 
-        # Create a SQL query using the extracted keywords
-        like_clauses = " OR ".join([f"descricao ILIKE '%{word}%'" for word in keywords])
+#         # Create a SQL query using the extracted keywords
+#         like_clauses = " OR ".join([f"descricao ILIKE '%{word}%'" for word in keywords])
 
-        # Ensure query is limited to 100 results
-        sql_query = f"SELECT * FROM drop_shot_inventory WHERE {like_clauses} LIMIT 100"
+#         # Ensure query is limited to 100 results
+#         sql_query = f"SELECT * FROM drop_shot_inventory WHERE {like_clauses} LIMIT 100"
 
-        # Check if the query is valid before execution
-        checked_query = check_query_tool(sql_query)
-        if "Error" in checked_query:
-            return checked_query
+#         # Check if the query is valid before execution
+#         checked_query = check_query_tool(sql_query)
+#         if "Error" in checked_query:
+#             return checked_query
 
-        logger.info(f"Executing SQL query: {checked_query}")
+#         logger.info(f"Executing SQL query: {checked_query}")
 
-         # Execute the query
-        results = db.run(checked_query)
+#          # Execute the query
+#         results = db.run(checked_query)
 
-        # Log the type and content of the result for debugging
-        logger.info(f"Query Results: {results}")
-        logger.info(f"Results Type: {type(results)}")
+#         # Log the type and content of the result for debugging
+#         logger.info(f"Query Results: {results}")
+#         logger.info(f"Results Type: {type(results)}")
 
-        # Check if results are found
-        if not results:
-            return "No products found for the given query."
+#         # Check if results are found
+#         if not results:
+#             return "No products found for the given query."
 
-        # Log the first row to examine the format
-        if results:
-            logger.info(f"First row of results: {results[0]}")
+#         # Log the first row to examine the format
+#         if results:
+#             logger.info(f"First row of results: {results[0]}")
 
-        # Dynamically process the results
-        result_str = "Here are the top products:\n"
-        for row in results:
-            result_str += f"{row}\n"  # Log each row without assumptions
+#         # Dynamically process the results
+#         result_str = "Here are the top products:\n"
+#         for row in results:
+#             result_str += f"{row}\n"  # Log each row without assumptions
 
-        return result_str
+#         return result_str
 
-    except Exception as e:
-        logger.error(f"Error executing SQL query: {e}")
-        return "There was an error while searching for products."
+#     except Exception as e:
+#         logger.error(f"Error executing SQL query: {e}")
+#         return "There was an error while searching for products."
 
 # DROP_SHOT_ITEMS = [
 #     {

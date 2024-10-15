@@ -9,7 +9,7 @@ from prompts import smart_vendor_prompt
 from state import DropShotVendorGraphState
 from vendor_agent import DropShotVendorAI
 from collections import deque
-from tools import search_products, check_query_tool, check_result  # Import tools
+from tools import search_items  # Import tools
 import logging
 
 # Setup for logging
@@ -55,14 +55,16 @@ def create_vendor(model, temperature, verbose):
             model=model, 
             temperature=temperature,
             verbose=verbose,
-            tools=[search_products, check_query_tool, check_result]  # Register tools here
+            tools = [search_items]
+            # tools=[search_products, check_query_tool, check_result]  # Register tools here
         ).invoke(
             prompt=smart_vendor_prompt
         )
     )
 
     # Add the tools node and fallback mechanism
-    builder.add_node("tools", create_tool_node_with_fallback([search_products, check_query_tool, check_result]))
+    # builder.add_node("tools", create_tool_node_with_fallback([search_products, check_query_tool, check_result]))
+    builder.add_node("tools", create_tool_node_with_fallback([search_items]))
 
     builder.add_edge(START, "vendor")
     builder.add_edge("tools", "vendor")

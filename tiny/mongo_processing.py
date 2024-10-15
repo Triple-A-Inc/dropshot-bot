@@ -6,13 +6,12 @@ uri = "mongodb+srv://luciano:Gn1hrhRcH5nh3KlM@drop-cluster.uxszu.mongodb.net/?re
 
 client = MongoClient(uri, server_api=ServerApi('1'))
 
-df = pd.read_csv('/Users/beylouni/Downloads/vendasdropestoque - Página2.csv')
+df = pd.read_csv('/Users/beylouni/Downloads/cleaned_with_estoque - cleaned_with_estoque-2.csv')
 
 data = df.to_dict(orient='records')
 
 collections = [
-    "estoque-test-v1",
-    "estoque-test"
+    "drop-estoque"
 ]
 
 db = client['drop']
