@@ -5,12 +5,16 @@ from dotenv import load_dotenv
 from tools import search_items  # Import your tools
 from graph import run_vendor_inference, vendor  # Import your graph functions
 
+
 # Load environment variables
 load_dotenv()
 
 # Flask app setup
 app = Flask(__name__)
 JIVOCHAT_TOKEN = os.getenv("JIVOCHAT_TOKEN")
+PROVIDER_ID = os.getenv("PROVIDER_ID")
+JIVOCHAT_RESPONSE_URL = f"https://bot.jivosite.com/webhooks/{PROVIDER_ID}/{JIVOCHAT_TOKEN}"
+JIVOCHAT_URL_ENDPOINT = f"/webhook/{JIVOCHAT_TOKEN}"
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -22,7 +26,19 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-@app.route('/webhook/RIrNaX4eb9xNJJk', methods=['POST'])
+
+
+def send_response_to_jivo(response):
+    headers = {
+        "Authorization": f"Bearer {JIVOCHAT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    request.post(JIVOCHAT_RESPONSE_URL, json=response, headers=headers)
+
+
+
+@app.route(JIVOCHAT_URL_ENDPOINT, methods=['POST'])
 def webhook():
     logger.info("Webhook endpoint triggered.")
 
