@@ -36,7 +36,10 @@ def send_response_to_jivo(response):
     
     request.post(JIVOCHAT_RESPONSE_URL, json=response, headers=headers)
 
-
+# Health check endpoint
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy"}), 200
 
 @app.route(JIVOCHAT_URL_ENDPOINT, methods=['POST'])
 def webhook():
