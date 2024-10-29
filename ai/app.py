@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, abort
 from dotenv import load_dotenv
 from tools import search_items  # Import your tools
 from graph import run_vendor_inference, vendor  # Import your graph functions
+import requests
 
 
 # Load environment variables
@@ -29,12 +30,7 @@ logger.addHandler(console_handler)
 
 
 def send_response_to_jivo(response):
-    headers = {
-        "Authorization": f"Bearer {JIVOCHAT_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
-    request.post(JIVOCHAT_RESPONSE_URL, json=response, headers=headers)
+    requests.post(JIVOCHAT_RESPONSE_URL, json=response)
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
@@ -44,14 +40,6 @@ def health_check():
 @app.route(JIVOCHAT_URL_ENDPOINT, methods=['POST'])
 def webhook():
     logger.info("Webhook endpoint triggered.")
-
-    # Step 1: Verify token
-    auth_header = request.headers.get("Authorization")
-    logger.info(f"Authorization header received: {auth_header}")
-
-    if auth_header != f"Bearer {JIVOCHAT_TOKEN}":
-        logger.warning("Unauthorized access attempt detected.")
-        abort(401)  # Unauthorized access
 
     # Step 2: Process the incoming JivoChat event
     data = request.get_json()
@@ -85,6 +73,7 @@ def webhook():
             }
 
             logger.info(f"Sending response to client_id={client_id}: {response_text}")
+            send_response_to_jivo(response)
             return jsonify(response)
 
         except Exception as e:
