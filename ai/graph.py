@@ -1,88 +1,39 @@
 from langgraph.graph import StateGraph
 from langgraph.graph import START, END
-from langgraph.prebuilt import tools_condition
-from langchain_core.messages import ToolMessage
-from langchain_core.runnables import RunnableLambda
-from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 from prompts import smart_vendor_prompt
 from state import DropShotVendorGraphState
 from vendor_agent import DropShotVendorAI
-from collections import deque
-from tools import search_items  # Import tools
 import logging
+from collections import deque
 
 # Setup for logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Error handling for tool failure
-def handle_tool_error(state) -> dict:
-    error = state.get("error")
-    tool_calls = state["messages"][-1].tool_calls
-    return {
-        "messages": [
-            ToolMessage(
-                content=f"Error: {repr(error)}. Please try again.",
-                tool_call_id=tc["id"],
-            )
-            for tc in tool_calls
-        ]
-    }
-
-# Create the tool node with fallbacks
-def create_tool_node_with_fallback(tools: list) -> dict:
-    return ToolNode(tools).with_fallbacks(
-        [RunnableLambda(handle_tool_error)], exception_key="error"
-    )
-
-# Route vendor AI
-def route_vendor(state) -> str:
-    logger.info(f"Routing vendor state: {state}")
-    if tools_condition(state) == END:
-        return END
-
-    if state["messages"][-1].tool_calls:
-        return "tools"
-
-# Build the vendor AI graph with tools
+# Build the vendor AI graph without tools
 def create_vendor(model, temperature, verbose):
     builder = StateGraph(DropShotVendorGraphState)
 
     builder.add_node("vendor",
         lambda state: DropShotVendorAI(
             state=state,
-            model=model, 
+            model=model,
             temperature=temperature,
             verbose=verbose,
-            tools = [search_items]
-            # tools=[search_products, check_query_tool, check_result]  # Register tools here
+            tools=[]  # Empty list since we're not using any tools
         ).invoke(
             prompt=smart_vendor_prompt
         )
     )
 
-    # Add the tools node and fallback mechanism
-    # builder.add_node("tools", create_tool_node_with_fallback([search_products, check_query_tool, check_result]))
-    builder.add_node("tools", create_tool_node_with_fallback([search_items]))
-
     builder.add_edge(START, "vendor")
-    builder.add_edge("tools", "vendor")
-
-    builder.add_conditional_edges(
-        "vendor",
-        route_vendor,
-        {
-            "tools": "tools",
-            END: END,
-        }
-    )
+    builder.add_edge("vendor", END)
 
     memory = MemorySaver()
     graph = builder.compile(checkpointer=memory)
     return graph
 
-# Running the vendor AI inference loop
 def run_vendor_inference(graph, message, user_id):
     events = graph.stream(
         {"messages": [("user", message)]},
@@ -97,9 +48,14 @@ def run_vendor_inference(graph, message, user_id):
     messages = recent_event.get('messages', [])
     last_message = messages[-1]
     response = last_message.content
+
+    # Check if the AI wants to escalate to a human agent
+    if response.strip() == 'INVITE_AGENT':
+        return 'INVITE_AGENT'
+
     return response
 
-# Initialize the vendor AI with the tools included
+# Initialize the vendor AI without tools
 vendor = create_vendor(model='gpt-4o-mini', temperature=1, verbose=True)
 
 # while True: 

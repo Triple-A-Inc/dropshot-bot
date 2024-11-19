@@ -1,23 +1,18 @@
 import logging
-from typing import List, Optional
+from typing import List
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from state import DropShotVendorGraphState
-from datetime import datetime
 import os 
 from langchain_openai import ChatOpenAI
-from dotenv import load_dotenv
-
+from collections import deque
 
 load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# Load environment variables
-load_dotenv()
 
 class DropShotVendorAI:
     def __init__(
@@ -42,7 +37,7 @@ class DropShotVendorAI:
     def __call__(self, state: DropShotVendorGraphState, config: RunnableConfig):
         while True:
             result = self.runnable.invoke(state)
-            if result.tool_calls or (result.content and not isinstance(result.content, list) or result.content[0].get("text")):
+            if result.content and (not isinstance(result.content, list) or result.content[0].get("text")):
                 break
             messages = state["messages"] + [("user", "Respond with a real output.")]
             state = {**state, "messages": messages}
@@ -56,14 +51,17 @@ class DropShotVendorAI:
         self.state = {**self.state, key: value}
 
     def invoke(self, prompt: str):
-        logger.info("AppointmentAssistant invoked")
+        logger.info("DropShotVendorAI invoked")
         
-        appointment_assistant_prompt = ChatPromptTemplate.from_messages([
+        assistant_prompt = ChatPromptTemplate.from_messages([
             ("system", prompt),
             ("placeholder", "{messages}")
         ])
         llm = self.get_llm()
-        chain = appointment_assistant_prompt | llm.bind_tools(self.tools)
+        if self.tools:
+            chain = assistant_prompt | llm.bind_tools(self.tools)
+        else:
+            chain = assistant_prompt | llm  # Do not bind tools if none are provided
         self.runnable = chain
         
         return self.__call__(self.state, {"configurable": {"thread_id": '123'}})

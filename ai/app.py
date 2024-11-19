@@ -2,10 +2,9 @@ import os
 import logging
 from flask import Flask, request, jsonify, abort
 from dotenv import load_dotenv
-from tools import search_items  # Import your tools
 from graph import run_vendor_inference, vendor  # Import your graph functions
 import requests
-
+from collections import deque
 
 # Load environment variables
 load_dotenv()
@@ -26,7 +25,6 @@ console_handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
-
 
 
 def send_response_to_jivo(response):
@@ -55,6 +53,15 @@ def webhook():
             # Step 3: Run vendor inference
             logger.info(f"Running inference for client_id={client_id}...")
             response_text = run_vendor_inference(vendor, message, client_id)
+
+            if response_text.strip() == 'INVITE_AGENT':
+                logger.info(f"AI requested to escalate to a human agent for client_id={client_id}.")
+                return jsonify({
+                    "id": data["id"],
+                    "client_id": client_id,
+                    "chat_id": data["chat_id"],
+                    "event": "INVITE_AGENT"
+                })
 
             if not response_text:
                 response_text = "I'm here to help! How can I assist you?"
@@ -86,6 +93,10 @@ def webhook():
                 "chat_id": data["chat_id"],
                 "event": "INVITE_AGENT"
             })
+
+    elif event_type == "INVITE_AGENT":
+        logger.info(f"Escalating to a human agent for client_id={data.get('client_id')}.")
+        return jsonify({"status": "Escalation to human agent triggered"})
 
     elif event_type == "CHAT_CLOSED":
         logger.info("Received CHAT_CLOSED event. Chat session ended.")
