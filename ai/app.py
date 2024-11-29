@@ -56,12 +56,14 @@ def webhook():
 
             if response_text.strip() == 'INVITE_AGENT':
                 logger.info(f"AI requested to escalate to a human agent for client_id={client_id}.")
-                return jsonify({
+                response = {
                     "id": data["id"],
                     "client_id": client_id,
                     "chat_id": data["chat_id"],
                     "event": "INVITE_AGENT"
-                })
+                }
+                send_response_to_jivo(response)
+                return jsonify(response)
 
             if not response_text:
                 response_text = "I'm here to help! How can I assist you?"
@@ -87,19 +89,35 @@ def webhook():
             logger.error(f"Error during message processing for client_id={client_id}: {e}", exc_info=True)
 
             # Step 5: Escalate to an agent if an error occurs
-            return jsonify({
+            response = {
                 "id": data["id"],
                 "client_id": client_id,
                 "chat_id": data["chat_id"],
                 "event": "INVITE_AGENT"
-            })
+            }
+            send_response_to_jivo(response)
+            return jsonify(response)
 
     elif event_type == "INVITE_AGENT":
         logger.info(f"Escalating to a human agent for client_id={data.get('client_id')}.")
+        response = {
+            "id": data["id"],
+            "client_id": client_id,
+            "chat_id": data["chat_id"],
+            "event": event_type
+        }
+        send_response_to_jivo(response)
         return jsonify({"status": "Escalation to human agent triggered"})
 
     elif event_type == "CHAT_CLOSED":
         logger.info("Received CHAT_CLOSED event. Chat session ended.")
+        response = {
+            "id": data["id"],
+            "client_id": client_id,
+            "chat_id": data["chat_id"],
+            "event": event_type
+        }
+        send_response_to_jivo(response)
         return jsonify({"status": "Chat closed"})
 
     elif event_type == "AGENT_UNAVAILABLE":
@@ -108,6 +126,13 @@ def webhook():
 
     # Step 6: Handle unrecognized events
     logger.warning(f"Received unhandled event type: {event_type}")
+    response = {
+        "id": data["id"],
+        "client_id": client_id,
+        "chat_id": data["chat_id"],
+        "event": 'INVITE_AGENT'
+    }
+    send_response_to_jivo(response)
     return jsonify({"status": "Event not handled"})
 
 if __name__ == '__main__':
